@@ -1,8 +1,8 @@
-- name: webhook.site events
+- name: Webhook site events
   hosts: localhost
   sources:
     - name: Webhook.site POSTs as events
-      webhooksite:
+      cloin.eda.webhooksite:
         api_url: {{ api_url }}
         interval: 10
 
