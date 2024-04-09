@@ -56,13 +56,10 @@ from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 async def fetch_webhook_site_requests(session, api_url, start_time, token):
-    params = {
-        "created_at": [f'"{start_time.strftime("%Y-%m-%d %H:%M:%S")}" TO *']
-    }
-    headers = {"Token": token}
     try:
-        async with session.get(api_url, params=params, headers=headers) as response:
+        async with session.get(api_url) as response:
             if response.status == 200:
                 return await response.json()
             else:
@@ -73,6 +70,7 @@ async def fetch_webhook_site_requests(session, api_url, start_time, token):
         logging.error(f"Request failed: {e}")
         return None
 
+
 async def main(queue: asyncio.Queue, args: dict):
     interval = int(args.get("interval", 15))
     token = args.get("token")
@@ -81,31 +79,13 @@ async def main(queue: asyncio.Queue, args: dict):
 
     async with aiohttp.ClientSession() as session:
         start_time = datetime.utcnow() - timedelta(minutes=5)
-        processed_requests = set()
-        first_poll = True
 
         while True:
             response_data = await fetch_webhook_site_requests(session, api_url, start_time, token)
 
             if response_data:
-                new_requests = response_data.get('data', [])
-                if first_poll:
-                    logging.info("First poll URL: %s", api_url)
-                    logging.info("Number of requests discovered: %d", len(new_requests))
+                await queue.put(response_data)
 
-                for request in new_requests:
-                    request_id = request.get('uuid')
-                    if request_id and request_id not in processed_requests:
-                        processed_requests.add(request_id)
-                        if not (first_poll and skip_first_poll):
-                            try:
-                                request['content'] = json.loads(request.get('content', '{}'))
-                            except json.JSONDecodeError:
-                                logging.error("Failed to parse JSON content")
-                            else:
-                                await queue.put(request)
-
-            first_poll = False
             await asyncio.sleep(interval)
             start_time = datetime.utcnow() - timedelta(minutes=5)
 
