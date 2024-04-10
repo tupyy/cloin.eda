@@ -9,6 +9,6 @@
   rules:
     - name: R1 - New webhook.site POST with content
       condition: |
-        event.state == "1"
+        event.payload.state == "1"
       action:
         debug:
